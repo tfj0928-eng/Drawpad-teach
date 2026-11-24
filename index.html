@@ -60,6 +60,13 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .chrome{background:var(--chrome);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border:1px solid var(--line);box-shadow:var(--shadow)}
 
 /* tool rail */
+#eraserBar{position:fixed;top:calc(72px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));z-index:6;display:flex;align-items:center;gap:2px;padding:5px 6px;border-radius:16px}
+#eraserBar[hidden]{display:none}
+.esz{width:44px;height:44px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.esz i{display:block;border-radius:50%;border:1.5px solid currentColor;box-sizing:border-box}
+.esz:hover{background:var(--hover)}
+.esz[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+#eraserBar .seg{margin-left:4px}
 .dock{display:none;position:fixed;left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:8;align-items:center;gap:2px;padding:4px;border-radius:18px}
 body.compact .dock{display:flex}
 .dockbtn{height:44px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;gap:7px;padding:0 12px 0 10px;font:600 14px var(--ui);cursor:pointer}
@@ -75,7 +82,8 @@ body.compact:not(.menu-open) .rail,body.compact:not(.menu-open) #props{display:n
 body.compact:not(.menu-open) .status>.pill:not(.zoompill){display:none}
 .zoompill .num.std{color:var(--accent)}
 .pill.zoompill .ib.lab{width:auto;display:flex;align-items:center;padding:0 12px 0 8px;gap:5px;font-size:13px;font-weight:500;white-space:nowrap}
-body.compact:not(.menu-open) .actions>:not(#syncBtn):not(#clearBtn){display:none}
+body.compact:not(.menu-open) .actions>:not(#syncBtn):not(#clearBtn):not(#undoBtn):not(#quickEraser){display:none}
+.actions .ib[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 body.compact .dock .sdot{display:none!important}
 body.compact .rail{top:calc(50% - 34px);max-height:calc(100% - 160px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 body.compact .status{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
@@ -291,16 +299,22 @@ output{font-size:13px;font-variant-numeric:tabular-nums;min-width:28px;color:var
     <button class="ib lab sync" id="syncBtn" aria-haspopup="true" aria-expanded="false" data-state="local"><i class="dot"></i><span id="syncTxt">單機</span><span class="faces" id="faces"></span></button>
     <button class="ib" id="undoBtn" aria-label="復原"><svg class="i" data-i="undo"></svg></button>
     <button class="ib" id="redoBtn" aria-label="重做"><svg class="i" data-i="redo"></svg></button>
+    <button class="ib" id="quickEraser" aria-label="橡皮擦" aria-pressed="false" title="橡皮擦（再點一下回到原本的工具）"><svg class="i" data-i="eraser"></svg></button>
     <button class="ib lab" id="clearBtn" aria-label="清空這一頁"><svg class="i" data-i="trash"></svg>清空</button>
     <button class="ib" id="compactBtn" aria-label="收起工具列"><svg class="i" id="compactIco" data-i="collapse"></svg></button>
     <button class="ib" id="moreBtn" aria-label="更多設定" aria-haspopup="true" aria-expanded="false"><svg class="i" data-i="more"></svg></button>
   </div>
 </div>
 
+<div class="chrome" id="eraserBar" hidden role="group" aria-label="橡皮擦大小">
+  <button class="esz" data-esz="12" aria-label="小"><i style="width:8px;height:8px"></i></button>
+  <button class="esz" data-esz="30" aria-label="中"><i style="width:15px;height:15px"></i></button>
+  <button class="esz" data-esz="60" aria-label="大"><i style="width:24px;height:24px"></i></button>
+  <button class="esz" data-esz="120" aria-label="特大"><i style="width:34px;height:34px"></i></button>
+  <div class="seg" data-key="eraserMode"><button data-v="pixel">局部</button><button data-v="object">整筆</button></div>
+</div>
 <div class="dock chrome" id="dock">
   <button class="dockbtn" id="dockTool" aria-label="打開工具選單" aria-expanded="false"><svg class="i" id="dockIco" viewBox="0 0 24 24" aria-hidden="true"></svg><i class="ddot" id="dockColor"></i><span id="dockName">畫筆</span><svg class="i chev" data-i="tools"></svg></button>
-  <button class="ib" id="dockUndo" aria-label="復原"><svg class="i" data-i="undo"></svg></button>
-  <button class="ib" id="dockRedo" aria-label="重做"><svg class="i" data-i="redo"></svg></button>
   <i class="sdot" id="dockSync" data-state="local" aria-hidden="true"></i>
 </div>
 <div class="status">
@@ -2175,16 +2189,17 @@ function setMenu(open){menuOpen=!!open;document.body.classList.toggle('menu-open
 function syncDock(){
   document.body.classList.toggle('compact',!!S.compact);
   if(!S.compact&&menuOpen){menuOpen=false;document.body.classList.remove('menu-open')}
+  const eb=$('#eraserBar');if(eb){eb.hidden=!(S.tool==='eraser'&&S.compact&&!menuOpen);$$('#eraserBar .esz').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.esz===S.eraserSize)))}
   const t=$('#dockTool');if(!t)return;
   t.setAttribute('aria-expanded',String(menuOpen));t.setAttribute('aria-label',menuOpen?'收起工具選單':'打開工具選單');
   $('#dockIco').innerHTML=menuOpen?IC.collapse:(IC[S.tool]||'');
   $('#dockName').textContent=menuOpen?'收起':(TOOL_NAME[S.tool]||'工具');
   const dc=$('#dockColor'),showC=!menuOpen&&['pen','hl','shape','text'].includes(S.tool);dc.style.display=showC?'block':'none';dc.style.background=S.color;
-  $('#dockUndo').disabled=$('#undoBtn').disabled;$('#dockRedo').disabled=$('#redoBtn').disabled;
   const ci=$('#compactIco');ci.innerHTML=S.compact?IC.fit:IC.collapse;$('#compactBtn').setAttribute('aria-label',S.compact?'固定顯示工具列':'收起工具列');
 }
 $('#dockTool').onclick=()=>setMenu(!menuOpen);
-$('#dockUndo').onclick=()=>undo(true);$('#dockRedo').onclick=()=>redo(true);
+$$('#eraserBar .esz').forEach(b=>b.onclick=()=>{S.eraserSize=+b.dataset.esz;syncUI();needs=true;scheduleSave()});
+$('#quickEraser').onclick=()=>{if(S.tool==='eraser')setTool(S.prevTool&&S.prevTool!=='eraser'?S.prevTool:'pen');else{S.prevTool=S.tool;setTool('eraser')}};
 $('#compactBtn').onclick=()=>{S.compact=!S.compact;menuOpen=false;document.body.classList.remove('menu-open');closePops();syncUI();scheduleSave();toast(S.compact?'工具列已收起，點左下角的按鈕就能叫出來':'工具列改成固定顯示')};
 $('#dashT').onclick=()=>{S.dash=!S.dash;syncUI();scheduleSave()};
 $('#lockT').onclick=()=>{S.lock=!S.lock;syncUI();scheduleSave()};
@@ -2249,6 +2264,7 @@ function syncUI(){
   $('#prevPg').disabled=cur===0;$('#nextPg').disabled=cur>=pages.length-1;
   updateUndo();updateZoom();
   $('#spotOff').hidden=!(spotOn&&S.tool!=='spot');
+  $('#quickEraser').setAttribute('aria-pressed',String(S.tool==='eraser'));
   syncDock();
   board.style.cursor=S.tool==='spot'?'none':S.tool==='hand'?'grab':S.tool==='select'?'default':S.tool==='text'?'text':'crosshair';
 }
