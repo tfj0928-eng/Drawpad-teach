@@ -168,6 +168,7 @@ output{font-size:13px;font-variant-numeric:tabular-nums;min-width:28px;color:var
 
 /* selection menu */
 #selmenu{position:fixed;left:0;top:0;display:flex;flex-wrap:wrap;justify-content:center;gap:2px;padding:4px;border-radius:13px;z-index:7;max-width:calc(100vw - 16px)}
+#spotOff{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;height:40px;padding:0 16px;border-radius:20px;color:var(--ink);font:500 14px var(--ui);cursor:pointer}
 #selmenu .acc{color:var(--accent);font-weight:700}
 #selmenu .vsep{width:1px;background:var(--line);margin:6px 3px}
 #selmenu .foldrow{display:flex;align-items:center;gap:4px;padding:0 4px 0 0;flex-basis:100%;justify-content:center;border-bottom:1px solid var(--line);margin-bottom:2px;padding-bottom:4px}
@@ -227,6 +228,7 @@ output{font-size:13px;font-variant-numeric:tabular-nums;min-width:28px;color:var
   <button class="tool" data-tool="shape" aria-label="圖形 (S)"><svg class="i" data-i="shape"></svg>圖形</button>
   <button class="tool" data-tool="text" aria-label="文字 (T)"><svg class="i" data-i="text"></svg>文字</button>
   <button class="tool" data-tool="laser" aria-label="雷射筆 (L)"><svg class="i" data-i="laser"></svg>雷射筆</button>
+  <button class="tool" data-tool="spot" aria-label="聚光燈 (F)"><svg class="i" data-i="spot"></svg>聚光燈</button>
   <hr>
   <button class="tool" id="railImg" aria-label="插入圖片"><svg class="i" data-i="image"></svg>圖片</button>
 </nav>
@@ -258,6 +260,11 @@ output{font-size:13px;font-variant-numeric:tabular-nums;min-width:28px;color:var
       <button class="chip" id="mirrorT" aria-pressed="false">對稱繪圖</button>
       <div class="seg" data-key="mirrorMode" id="mirrorSeg"><button data-v="v">左右</button><button data-v="h">上下</button><button data-v="x">四向</button></div>
       <button class="chip" id="mirrorC">移到畫面中間</button>
+    </div>
+    <div class="grp" id="gSpot">
+      <div class="seg" data-key="spotShape"><button data-v="circle">圓形</button><button data-v="rect">長條</button></div>
+      <div class="seg" data-key="spotDim"><button data-v="lo">淡</button><button data-v="mid">中</button><button data-v="hi">深</button></div>
+      <button class="chip" id="spotClose">關閉聚光燈</button>
     </div>
     <div class="grp hint" id="gHint"></div>
   </div>
@@ -314,6 +321,7 @@ output{font-size:13px;font-variant-numeric:tabular-nums;min-width:28px;color:var
 </div>
 
 <div class="chrome" id="selmenu" hidden></div>
+<button class="chrome" id="spotOff" hidden>聚光燈開啟中・關閉</button>
 
 <textarea id="texted" hidden spellcheck="false" autocomplete="off" aria-label="輸入文字"></textarea>
 <input type="file" id="fileIn" accept="image/*" hidden>
@@ -385,6 +393,7 @@ hl:'<path d="M8.5 14.5l-3 3.2V20h3.6l2.4-2.5"/><path d="M8.5 14.5l8.2-8.6a2 2 0 
 eraser:'<path d="M7.5 20.5h12"/><path d="M4.9 14.9l8.6-8.6a2 2 0 012.8 0l2.4 2.4a2 2 0 010 2.8L11 19.2a2 2 0 01-1.4.6H8.3a2 2 0 01-1.4-.6l-2-2a1.5 1.5 0 010-2.3z"/><path d="M9.3 10.5l5.2 5.2"/>',
 shape:'<rect x="3.5" y="12.5" width="8" height="8" rx="1.2"/><circle cx="16.5" cy="7.5" r="4"/><path d="M17 13.5l3.8 7h-7.6z"/>',
 text:'<path d="M5 7V4.5h14V7M12 4.5v15M9 19.5h6"/>',
+spot:'<path d="M6.5 3.5h11l-2.5 6h-6z"/><path d="M9 9.5v9a2 2 0 002 2h2a2 2 0 002-2v-9"/><path d="M12 13v2.5"/>',
 laser:'<circle cx="12" cy="12" r="2.6"/><path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2L18 18M6 18l1.8-1.8M16.2 7.8L18 6"/>',
 image:'<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 15.5l-4.5-4.5-8.5 8.5"/>',
 undo:'<path d="M9 14L4.5 9.5 9 5"/><path d="M4.5 9.5H14a5.5 5.5 0 010 11h-3"/>',
@@ -457,13 +466,13 @@ const DEF_VIEW={yaw:-32,pitch:22},NET_VIEW={yaw:-32,pitch:28};
 const net3D=o=>o.fold>0||(o.pitch!=null&&o.pitch<89.99);
 const canRotate=o=>!!o&&(isSolid(o)||o.k==='blocks'||(isNet(o)&&o.fold>=.999));
 const SHAPE_NAME={};SHAPES.forEach(g=>g.items.forEach(([k,n])=>SHAPE_NAME[k]=n));
-const WCONF={pen:['penW','粗細',1,40],hl:['hlW','粗細',6,60],shape:['shapeW','線寬',1,24],text:['textSize','字級',12,120],eraser:['eraserSize','大小',6,140]};
-const HINTS={select:'點一下選取物件，拖曳空白處可框選；選取後點顏色就能換色',hand:'拖曳移動畫布，雙指捏合縮放',laser:'講解時用，筆跡約一秒後自動消失'};
-const VIS={pen:['gColor','gWidth','gMirror'],hl:['gColor','gWidth','gMirror'],eraser:['gWidth','gEraser','gMirror'],shape:['gShape','gColor','gWidth','gFill'],text:['gColor','gWidth'],select:['gColor','gHint'],hand:['gHint'],laser:['gHint']};
+const WCONF={pen:['penW','粗細',1,40],hl:['hlW','粗細',6,60],shape:['shapeW','線寬',1,24],text:['textSize','字級',12,120],eraser:['eraserSize','大小',6,140],spot:['spotR','大小',50,450]};
+const HINTS={select:'點一下選取物件，拖曳空白處可框選；選取後點顏色就能換色',hand:'拖曳移動畫布，雙指捏合縮放',laser:'講解時用，筆跡約一秒後自動消失',spot:'拖曳移動聚光燈。換成畫筆時聚光燈會保留，可以在亮的地方寫字'};
+const VIS={pen:['gColor','gWidth','gMirror'],hl:['gColor','gWidth','gMirror'],eraser:['gWidth','gEraser','gMirror'],shape:['gShape','gColor','gWidth','gFill'],text:['gColor','gWidth'],select:['gColor','gHint'],hand:['gHint'],laser:['gHint'],spot:['gWidth','gSpot','gHint']};
 const TFONT=s=>`500 ${s}px "Noto Sans TC","PingFang TC",sans-serif`;
 
 /* ---------- state ---------- */
-const DEF={mirror:false,mirrorMode:'v',mirrorPt:null,tool:'pen',color:'#1d1d1f',penW:4,hlW:24,shapeW:3,textSize:32,eraserSize:30,eraserMode:'pixel',shape:'rect',fill:'none',dash:false,lock:false,pressure:true,pencilOnly:false,bgType:'grid',paper:'white',askedPencil:false};
+const DEF={spotR:150,spotShape:'circle',spotDim:'mid',spot:null,mirror:false,mirrorMode:'v',mirrorPt:null,tool:'pen',color:'#1d1d1f',penW:4,hlW:24,shapeW:3,textSize:32,eraserSize:30,eraserMode:'pixel',shape:'rect',fill:'none',dash:false,lock:false,pressure:true,pencilOnly:false,bgType:'grid',paper:'white',askedPencil:false};
 let S={...DEF},pages=[],cur=0,cam;
 const KEY='ipad-free-board-v1';
 const KEY_SET='ipad-free-board-settings-v1';
@@ -1205,6 +1214,8 @@ function drawLive(now){
       dctx.lineWidth=1;dctx.strokeStyle='rgba(120,124,140,.8)';dctx.stroke();
     }
   }
+  if(spotOn&&S.spot)drawSpot(S.spot[0]*cam.s+cam.tx,S.spot[1]*cam.s+cam.ty,S.spotR,S.spotShape==='rect'?1:0,S.spotDim==='lo'?1:S.spotDim==='hi'?3:2);
+  else{for(const p of peers){const pr=p.presence||{},q=pr.spot;if(pr.pg===pg().id&&q&&typeof q==='object'&&[q.x,q.y,q.r].every(v=>typeof v==='number'&&isFinite(v))){drawSpot(q.x*cam.s+cam.tx,q.y*cam.s+cam.ty,clamp(q.r*cam.s,10,4000),q.sh===1?1:0,q.dm===1?1:q.dm===3?3:2);break}}}
   if(peers.length)drawPeersScreen();
   // laser
   if(laser.length){
@@ -1322,6 +1333,7 @@ function onMove(e){
     for(const ev of (evs.length?evs:[e]))actionMove(ev);
     needs=true;sendPresence(x,y);return;
   }
+  if(e.pointerType!=='touch'&&!action&&S.tool==='spot'&&spotOn){S.spot=toW(x,y).map(r1);needs=true}
   if(e.pointerType!=='touch'&&!action){cursorPt={x,y};if(S.tool==='eraser'||S.tool==='pen'||S.tool==='hl')needs=true}
   sendPresence(x,y);
 }
@@ -1344,7 +1356,7 @@ function maybeAskPencil(){
 
 function startAction(e,touch){
   if(sync.on&&sync.state==='connecting'){toast('正在連線共用白板，請稍候',null,1200);return}
-  if(sync.on&&sync.readOnly&&S.tool!=='laser'){readOnlyToast();return}
+  if(sync.on&&sync.readOnly&&S.tool!=='laser'&&S.tool!=='spot'){readOnlyToast();return}
   const x=e.clientX,y=e.clientY,[wx,wy]=toW(x,y),id=e.pointerId;
   const pr=e.pointerType==='pen'?(e.pressure||.5):.5;
   if(e.pointerType==='pen')maybeAskPencil();
@@ -1364,6 +1376,7 @@ function startAction(e,touch){
     case 'shape':action={kind:'shape',id,touch,sx:x,sy:y,o:{k:'shape',s:S.shape,x1:wx,y1:wy,x2:wx,y2:wy,c:S.color,w:S.shapeW,fill:S.fill,dash:S.dash}};break;
     case 'text':action={kind:'text',id,touch,sx:x,sy:y,wx,wy};break;
     case 'laser':laser.push({x:wx,y:wy,t:performance.now(),brk:true});action={kind:'laser',id,touch};break;
+    case 'spot':spotOn=true;S.spot=[r1(wx),r1(wy)];action={kind:'spot',id,touch};break;
     case 'select':startSelect(x,y,wx,wy,id,touch);break;
   }
   needs=true;
@@ -1388,6 +1401,7 @@ function actionMove(ev){
       else if(S.lock||o.s==='cube'||(o.s.startsWith('sy_')&&SYMF[o.s.slice(3)]&&SYMF[o.s.slice(3)].u)){const d=Math.max(Math.abs(dx),Math.abs(dy));x2=o.x1+(dx<0?-d:d);y2=o.y1+(dy<0?-d:d)}
       o.x2=x2;o.y2=y2;break;}
     case 'laser':laser.push({x:wx,y:wy,t:performance.now()});break;
+    case 'spot':S.spot=[r1(wx),r1(wy)];break;
     case 'move':{
       if(!a.moved&&Math.hypot(x-a.sx,y-a.sy)<4)return;
       a.moved=true;const dx=wx-a.wx0,dy=wy-a.wy0;a.preview=a.orig.map(o=>moveObj(o,dx,dy));break;}
@@ -1894,7 +1908,7 @@ function sendPresence(x,y,force){
   const t=performance.now();if(!force&&t-lastPres<60)return;lastPres=t;
   let c=null;if(x!=null){const w=toW(x,y);c=[Math.round(w[0]),Math.round(w[1])]}
   else if(lastPresVal&&!force)c=lastPresVal.cur;
-  lastPresVal={pg:pg().id,cur:c,live:livePayload(),n:(ME.name||'').slice(0,20),c:ME.color,t:firebase.database.ServerValue.TIMESTAMP};
+  lastPresVal={pg:pg().id,cur:c,live:livePayload(),spot:spotPayload(),n:(ME.name||'').slice(0,20),c:ME.color,t:firebase.database.ServerValue.TIMESTAMP};
   sync.myPres.set(lastPresVal).catch(()=>{});
 }
 function peerInfo(p){return{name:p.name||'訪客',color:p.color||'#868e96'}}
@@ -2096,7 +2110,20 @@ function pickColor(c){
 function setTool(t){
   if(textEdit)finishText();
   if(t!=='select')sel=[];
-  S.tool=t;closePops();cursorPt=null;syncUI();needs=true;scheduleSave();
+  S.tool=t;closePops();cursorPt=null;
+  if(t==='spot'){const was=spotOn;spotOn=true;const v=viewArea();const sp=S.spot?[S.spot[0]*cam.s+cam.tx,S.spot[1]*cam.s+cam.ty]:null;if(!sp||sp[0]<v.l||sp[0]>W-v.r||sp[1]<v.t||sp[1]>H-v.b)S.spot=toW((v.l+W-v.r)/2,(v.t+H-v.b)/2).map(r1);if(!was)sendPresence(null,null,true)}
+  syncUI();needs=true;scheduleSave();
+}
+let spotOn=false;
+function spotOff(){spotOn=false;if(S.tool==='spot')setTool('pen');syncUI();needs=true;sendPresence(null,null,true)}
+function spotPayload(){return spotOn&&S.spot?{x:Math.round(S.spot[0]),y:Math.round(S.spot[1]),r:Math.round(S.spotR/cam.s),sh:S.spotShape==='rect'?1:0,dm:S.spotDim==='lo'?1:S.spotDim==='hi'?3:2}:null}
+function drawSpot(x,y,r,sh,dm){
+  const a=dm===1?.45:dm===3?.84:.66,col=`rgba(16,18,26,${a})`;
+  dctx.save();
+  if(sh===1){const w=r*2.8,h=r*1.1;dctx.fillStyle=col;dctx.beginPath();dctx.rect(0,0,W,H);
+    const x0=x-w/2,y0=y-h/2,rr=Math.min(18,h/4);dctx.moveTo(x0+rr,y0);dctx.arcTo(x0,y0,x0,y0+h,rr);dctx.arcTo(x0,y0+h,x0+w,y0+h,rr);dctx.arcTo(x0+w,y0+h,x0+w,y0,rr);dctx.arcTo(x0+w,y0,x0,y0,rr);dctx.closePath();dctx.fill('evenodd')}
+  else{const g=dctx.createRadialGradient(x,y,Math.max(1,r*.88),x,y,r*1.04);g.addColorStop(0,'rgba(16,18,26,0)');g.addColorStop(1,col);dctx.fillStyle=g;dctx.fillRect(0,0,W,H)}
+  dctx.restore();
 }
 $$('.tool[data-tool]').forEach(b=>b.addEventListener('click',()=>{
   const t=b.dataset.tool;
@@ -2112,16 +2139,17 @@ $('#shapeBtn').onclick=()=>togglePop('shape');
 $('#moreBtn').onclick=()=>togglePop('more');
 $('#mirrorT').onclick=()=>{S.mirror=!S.mirror;if(S.mirror){const v=viewArea();const sp=S.mirrorPt?[S.mirrorPt[0]*cam.s+cam.tx,S.mirrorPt[1]*cam.s+cam.ty]:null;if(!sp||sp[0]<v.l||sp[0]>W-v.r||sp[1]<v.t||sp[1]>H-v.b)centerMirror();if(!S.tipMirror){S.tipMirror=true;toast('在虛線一邊畫，另一邊會自動畫出對稱的線',null,3500)}}syncUI();needs=true;scheduleSave()};
 $('#mirrorC').onclick=()=>{centerMirror();syncUI()};
+$('#spotClose').onclick=spotOff;$('#spotOff').onclick=spotOff;
 $('#dashT').onclick=()=>{S.dash=!S.dash;syncUI();scheduleSave()};
 $('#lockT').onclick=()=>{S.lock=!S.lock;syncUI();scheduleSave()};
 $('#pencilT').onclick=()=>{S.pencilOnly=!S.pencilOnly;S.askedPencil=true;syncUI();scheduleSave()};
 $('#pressT').onclick=()=>{S.pressure=!S.pressure;syncUI();scheduleSave()};
 $$('.seg[data-key]').forEach(seg=>seg.addEventListener('click',e=>{
   const b=e.target.closest('button[data-v]');if(!b)return;S[seg.dataset.key]=b.dataset.v;
-  if(seg.dataset.key==='bgType')bgDirty=true;if(seg.dataset.key==='mirrorMode')needs=true;syncUI();scheduleSave();
+  if(seg.dataset.key==='bgType')bgDirty=true;if(seg.dataset.key==='mirrorMode'||seg.dataset.key.startsWith('spot')){needs=true;if(seg.dataset.key.startsWith('spot'))sendPresence(null,null,true)}syncUI();scheduleSave();
 }));
 const wIn=$('#wIn');
-wIn.addEventListener('input',()=>{const c=WCONF[S.tool];if(!c)return;S[c[0]]=+wIn.value;if(textEdit&&S.tool==='text'){textEdit.size=+wIn.value;layoutText()}syncWidth();scheduleSave()});
+wIn.addEventListener('input',()=>{const c=WCONF[S.tool];if(!c)return;S[c[0]]=+wIn.value;needs=true;if(S.tool==='spot')sendPresence(null,null,true);if(textEdit&&S.tool==='text'){textEdit.size=+wIn.value;layoutText()}syncWidth();scheduleSave()});
 
 let openPop=null;
 function togglePop(which){
@@ -2149,11 +2177,11 @@ function syncWidth(){
   const c=WCONF[S.tool];if(!c)return;
   const v=S[c[0]];$('#wLbl').textContent=c[1];wIn.min=c[2];wIn.max=c[3];wIn.value=v;wIn.setAttribute('aria-label',c[1]);
   $('#wOut').textContent=v;
-  const d=S.tool==='text'?Math.min(28,8+v/5):S.tool==='eraser'?Math.min(30,v/4+4):Math.min(30,Math.max(3,v*(S.tool==='hl'?.5:.8)));
+  const d=S.tool==='spot'?Math.min(30,v/16+6):S.tool==='text'?Math.min(28,8+v/5):S.tool==='eraser'?Math.min(30,v/4+4):Math.min(30,Math.max(3,v*(S.tool==='hl'?.5:.8)));
   const p=$('#wPrev');p.style.width=p.style.height=d+'px';
-  p.style.background=S.tool==='eraser'?'transparent':S.color;p.style.border=S.tool==='eraser'?'1.5px solid var(--muted)':'0';
+  p.style.background=S.tool==='eraser'||S.tool==='spot'?'transparent':S.color;p.style.border=S.tool==='eraser'||S.tool==='spot'?'1.5px solid var(--muted)':'0';
   p.style.opacity=S.tool==='hl'?.45:1;
-  p.style.boxShadow=S.color==='#ffffff'&&S.tool!=='eraser'?'inset 0 0 0 1px rgba(0,0,0,.25)':'none';
+  p.style.boxShadow=S.color==='#ffffff'&&S.tool!=='eraser'&&S.tool!=='spot'?'inset 0 0 0 1px rgba(0,0,0,.25)':'none';
 }
 function syncUI(){
   $$('.tool[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===S.tool)));
@@ -2174,7 +2202,8 @@ function syncUI(){
   $('#pgLbl').textContent=`${cur+1} / ${pages.length}`;
   $('#prevPg').disabled=cur===0;$('#nextPg').disabled=cur>=pages.length-1;
   updateUndo();updateZoom();
-  board.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':S.tool==='text'?'text':'crosshair';
+  $('#spotOff').hidden=!(spotOn&&S.tool!=='spot');
+  board.style.cursor=S.tool==='spot'?'none':S.tool==='hand'?'grab':S.tool==='select'?'default':S.tool==='text'?'text':'crosshair';
 }
 
 /* ---------- keyboard ---------- */
@@ -2184,7 +2213,7 @@ addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&k==='z'){e.preventDefault();e.shiftKey?redo(true):undo(true);return}
   if((e.metaKey||e.ctrlKey)&&k==='y'){e.preventDefault();redo(true);return}
   if(e.metaKey||e.ctrlKey||e.altKey)return;
-  const map={v:'select',h:'hand',p:'pen',m:'hl',e:'eraser',s:'shape',t:'text',l:'laser'};
+  const map={v:'select',h:'hand',p:'pen',m:'hl',e:'eraser',s:'shape',t:'text',l:'laser',f:'spot'};
   if(map[k]){setTool(map[k]);return}
   if((k==='backspace'||k==='delete')&&sel.length){e.preventDefault();deleteSel();return}
   if(k==='escape'){closePops();sel=[];needs=true}
@@ -2215,6 +2244,7 @@ function seedPage(){
 
 /* ---------- init ---------- */
 const loaded=load();
+if(S.tool==='spot')S.tool='pen';
 if(!loaded){pages=[seedPage()];cur=0}
 cam=pg().cam;
 readTokens();buildSwatches();buildShapePop();
