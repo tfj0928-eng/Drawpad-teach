@@ -60,6 +60,22 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .chrome{background:var(--chrome);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border:1px solid var(--line);box-shadow:var(--shadow)}
 
 /* tool rail */
+.dock{display:none;position:fixed;left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:8;align-items:center;gap:2px;padding:4px;border-radius:18px}
+body.compact .dock{display:flex}
+.dockbtn{height:44px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;gap:7px;padding:0 12px 0 10px;font:600 14px var(--ui);cursor:pointer}
+.dockbtn .chev{width:16px;height:16px;opacity:.8}
+.dockbtn .ddot{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 2px var(--accent-ink);display:none}
+.dockbtn[aria-expanded="true"]{background:var(--ink);color:var(--chrome-solid)}
+.sdot{width:9px;height:9px;border-radius:50%;margin:0 8px 0 4px;background:var(--muted);display:none}
+.sdot[data-state="live"]{display:block;background:#2f9e44}
+.sdot[data-state="connecting"],.sdot[data-state="slow"]{display:block;background:#f59f00}
+.sdot[data-state="error"]{display:block;background:var(--danger)}
+.sdot[data-state="ro"]{display:block;background:#1c7ed6}
+body.compact:not(.menu-open) .rail,body.compact:not(.menu-open) #props,body.compact:not(.menu-open) .status{display:none}
+body.compact:not(.menu-open) .actions>:not(#syncBtn):not(#clearBtn){display:none}
+body.compact .dock .sdot{display:none!important}
+body.compact .rail{top:calc(50% - 34px);max-height:calc(100% - 160px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+body.compact .status{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .rail{position:fixed;left:calc(10px + env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:20px;max-height:calc(100% - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;scrollbar-width:none;z-index:5}
 .tool{width:56px;min-height:52px;border:0;background:transparent;color:var(--ink);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:500;letter-spacing:.04em;cursor:pointer;flex:none}
 .tool:hover{background:var(--hover)}
@@ -273,10 +289,17 @@ output{font-size:13px;font-variant-numeric:tabular-nums;min-width:28px;color:var
     <button class="ib" id="undoBtn" aria-label="復原"><svg class="i" data-i="undo"></svg></button>
     <button class="ib" id="redoBtn" aria-label="重做"><svg class="i" data-i="redo"></svg></button>
     <button class="ib lab" id="clearBtn" aria-label="清空這一頁"><svg class="i" data-i="trash"></svg>清空</button>
+    <button class="ib" id="compactBtn" aria-label="收起工具列"><svg class="i" id="compactIco" data-i="collapse"></svg></button>
     <button class="ib" id="moreBtn" aria-label="更多設定" aria-haspopup="true" aria-expanded="false"><svg class="i" data-i="more"></svg></button>
   </div>
 </div>
 
+<div class="dock chrome" id="dock">
+  <button class="dockbtn" id="dockTool" aria-label="打開工具選單" aria-expanded="false"><svg class="i" id="dockIco" viewBox="0 0 24 24" aria-hidden="true"></svg><i class="ddot" id="dockColor"></i><span id="dockName">畫筆</span><svg class="i chev" data-i="tools"></svg></button>
+  <button class="ib" id="dockUndo" aria-label="復原"><svg class="i" data-i="undo"></svg></button>
+  <button class="ib" id="dockRedo" aria-label="重做"><svg class="i" data-i="redo"></svg></button>
+  <i class="sdot" id="dockSync" data-state="local" aria-hidden="true"></i>
+</div>
 <div class="status">
   <div class="pill chrome" aria-label="縮放">
     <button class="ib" id="zoomOut" aria-label="縮小"><svg class="i" data-i="minus"></svg></button>
@@ -401,6 +424,8 @@ redo:'<path d="M15 14l4.5-4.5L15 5"/><path d="M19.5 9.5H10a5.5 5.5 0 000 11h3"/>
 trash:'<path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.9 11.6a2 2 0 002 1.9h5.2a2 2 0 002-1.9L17.5 7M9.5 7V4.5h5V7"/>',
 more:'<circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/>',
 minus:'<path d="M6 12h12"/>',plus:'<path d="M12 6v12M6 12h12"/>',
+collapse:'<path d="M9 4.5V9H4.5M15 4.5V9h4.5M9 19.5V15H4.5M15 19.5V15h4.5"/>',
+tools:'<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 fit:'<path d="M4.5 9V4.5H9M19.5 9V4.5H15M4.5 15v4.5H9M19.5 15v4.5H15"/>',
 left:'<path d="M14.5 6l-6 6 6 6"/>',right:'<path d="M9.5 6l6 6-6 6"/>',
 addpage:'<path d="M14 3.5H7a2 2 0 00-2 2v13a2 2 0 002 2h10a2 2 0 002-2V8.5z"/><path d="M14 3.5v5h5M12 11.5v6M9 14.5h6"/>',
@@ -472,7 +497,7 @@ const VIS={pen:['gColor','gWidth','gMirror'],hl:['gColor','gWidth','gMirror'],er
 const TFONT=s=>`500 ${s}px "Noto Sans TC","PingFang TC",sans-serif`;
 
 /* ---------- state ---------- */
-const DEF={spotR:150,spotShape:'circle',spotDim:'mid',spot:null,mirror:false,mirrorMode:'v',mirrorPt:null,tool:'pen',color:'#1d1d1f',penW:4,hlW:24,shapeW:3,textSize:32,eraserSize:30,eraserMode:'pixel',shape:'rect',fill:'none',dash:false,lock:false,pressure:true,pencilOnly:false,bgType:'grid',paper:'white',askedPencil:false};
+const DEF={compact:true,spotR:150,spotShape:'circle',spotDim:'mid',spot:null,mirror:false,mirrorMode:'v',mirrorPt:null,tool:'pen',color:'#1d1d1f',penW:4,hlW:24,shapeW:3,textSize:32,eraserSize:30,eraserMode:'pixel',shape:'rect',fill:'none',dash:false,lock:false,pressure:true,pencilOnly:false,bgType:'grid',paper:'white',askedPencil:false};
 let S={...DEF},pages=[],cur=0,cam;
 const KEY='ipad-free-board-v1';
 const KEY_SET='ipad-free-board-settings-v1';
@@ -1132,7 +1157,7 @@ function commitAdd(o){if(!o.id)o.id=uid();commit([...pg().objects,o]);if(camEq(c
 function afterHistory(){remapSel();renderCommitted(null);scheduleSave();updateUndo()}
 function undo(quiet){if(anim)return;if(sync.on&&sync.readOnly){readOnlyToast();return}const p=pg();if(!p.undo.length){toast('沒有可以復原的步驟');return}const d=p.undo.pop();applyPatch(p,d.before);p.redo.push(d);syncWrite(p,d.before);afterHistory();if(!quiet)toast('已復原',null,900)}
 function redo(quiet){if(anim)return;if(sync.on&&sync.readOnly){readOnlyToast();return}const p=pg();if(!p.redo.length){toast('沒有可以重做的步驟');return}const d=p.redo.pop();applyPatch(p,d.after);p.undo.push(d);syncWrite(p,d.after);afterHistory();if(!quiet)toast('已重做',null,900)}
-function updateUndo(){$('#undoBtn').disabled=!pg().undo.length;$('#redoBtn').disabled=!pg().redo.length}
+function updateUndo(){$('#undoBtn').disabled=!pg().undo.length;$('#redoBtn').disabled=!pg().redo.length;const du=$('#dockUndo');if(du){du.disabled=$('#undoBtn').disabled;$('#dockRedo').disabled=$('#redoBtn').disabled}}
 
 /* ---------- background ---------- */
 function drawPaper(ctx,c,w,h){
@@ -1258,7 +1283,7 @@ function frame(){
 function camChanged(){bgDirty=true;needs=true;updateZoom();if(textEdit)layoutText();scheduleSave()}
 function zoomAt(f,sx=W/2,sy=H/2){const s=clamp(cam.s*f,.1,8);const wx=(sx-cam.tx)/cam.s,wy=(sy-cam.ty)/cam.s;cam.s=s;cam.tx=sx-wx*s;cam.ty=sy-wy*s;camChanged();renderSoon()}
 function updateZoom(){$('#zoomLbl').textContent=Math.round(cam.s*100)+'%'}
-function viewArea(){const narrow=W<=900;return{l:narrow?84:96,t:narrow?150:84,r:20,b:72}}
+function viewArea(){if(S.compact)return{l:24,t:24,r:24,b:84};const narrow=W<=900;return{l:narrow?84:96,t:narrow?150:84,r:20,b:72}}
 function fitContent(){
   const vis=pg().objects.filter(o=>o.k!=='erase');const v=viewArea();
   const aw=Math.max(100,W-v.l-v.r),ah=Math.max(100,H-v.t-v.b);
@@ -1283,6 +1308,7 @@ document.addEventListener('dblclick',e=>e.preventDefault());
 function onDown(e){
   if(anim)return;
   if(textEdit){finishText();return}
+  if(menuOpen&&S.compact)setMenu(false);
   closePops();
   try{board.setPointerCapture(e.pointerId)}catch(_){}
   const x=e.clientX,y=e.clientY;
@@ -1950,7 +1976,7 @@ function syncLabel(){
 }
 function updateSyncUI(){
   const b=$('#syncBtn');if(!b)return;
-  b.dataset.state=sync.state;
+  b.dataset.state=sync.state;{const dk=$('#dockSync');if(dk)dk.dataset.state=b.dataset.state}
   $('#syncTxt').textContent=syncLabel();
   const faces=peers.map(peerInfo);
   const f=$('#faces');f.textContent='';
@@ -2140,6 +2166,23 @@ $('#moreBtn').onclick=()=>togglePop('more');
 $('#mirrorT').onclick=()=>{S.mirror=!S.mirror;if(S.mirror){const v=viewArea();const sp=S.mirrorPt?[S.mirrorPt[0]*cam.s+cam.tx,S.mirrorPt[1]*cam.s+cam.ty]:null;if(!sp||sp[0]<v.l||sp[0]>W-v.r||sp[1]<v.t||sp[1]>H-v.b)centerMirror();if(!S.tipMirror){S.tipMirror=true;toast('在虛線一邊畫，另一邊會自動畫出對稱的線',null,3500)}}syncUI();needs=true;scheduleSave()};
 $('#mirrorC').onclick=()=>{centerMirror();syncUI()};
 $('#spotClose').onclick=spotOff;$('#spotOff').onclick=spotOff;
+let menuOpen=false;
+const TOOL_NAME={select:'選取',hand:'移動',pen:'畫筆',hl:'螢光筆',eraser:'橡皮擦',shape:'圖形',text:'文字',laser:'雷射筆',spot:'聚光燈'};
+function setMenu(open){menuOpen=!!open;document.body.classList.toggle('menu-open',menuOpen);if(!menuOpen)closePops();syncDock();needs=true}
+function syncDock(){
+  document.body.classList.toggle('compact',!!S.compact);
+  if(!S.compact&&menuOpen){menuOpen=false;document.body.classList.remove('menu-open')}
+  const t=$('#dockTool');if(!t)return;
+  t.setAttribute('aria-expanded',String(menuOpen));t.setAttribute('aria-label',menuOpen?'收起工具選單':'打開工具選單');
+  $('#dockIco').innerHTML=menuOpen?IC.collapse:(IC[S.tool]||'');
+  $('#dockName').textContent=menuOpen?'收起':(TOOL_NAME[S.tool]||'工具');
+  const dc=$('#dockColor'),showC=!menuOpen&&['pen','hl','shape','text'].includes(S.tool);dc.style.display=showC?'block':'none';dc.style.background=S.color;
+  $('#dockUndo').disabled=$('#undoBtn').disabled;$('#dockRedo').disabled=$('#redoBtn').disabled;
+  const ci=$('#compactIco');ci.innerHTML=S.compact?IC.fit:IC.collapse;$('#compactBtn').setAttribute('aria-label',S.compact?'固定顯示工具列':'收起工具列');
+}
+$('#dockTool').onclick=()=>setMenu(!menuOpen);
+$('#dockUndo').onclick=()=>undo(true);$('#dockRedo').onclick=()=>redo(true);
+$('#compactBtn').onclick=()=>{S.compact=!S.compact;menuOpen=false;document.body.classList.remove('menu-open');closePops();syncUI();scheduleSave();toast(S.compact?'工具列已收起，點左下角的按鈕就能叫出來':'工具列改成固定顯示')};
 $('#dashT').onclick=()=>{S.dash=!S.dash;syncUI();scheduleSave()};
 $('#lockT').onclick=()=>{S.lock=!S.lock;syncUI();scheduleSave()};
 $('#pencilT').onclick=()=>{S.pencilOnly=!S.pencilOnly;S.askedPencil=true;syncUI();scheduleSave()};
@@ -2203,6 +2246,7 @@ function syncUI(){
   $('#prevPg').disabled=cur===0;$('#nextPg').disabled=cur>=pages.length-1;
   updateUndo();updateZoom();
   $('#spotOff').hidden=!(spotOn&&S.tool!=='spot');
+  syncDock();
   board.style.cursor=S.tool==='spot'?'none':S.tool==='hand'?'grab':S.tool==='select'?'default':S.tool==='text'?'text':'crosshair';
 }
 
@@ -2216,7 +2260,7 @@ addEventListener('keydown',e=>{
   const map={v:'select',h:'hand',p:'pen',m:'hl',e:'eraser',s:'shape',t:'text',l:'laser',f:'spot'};
   if(map[k]){setTool(map[k]);return}
   if((k==='backspace'||k==='delete')&&sel.length){e.preventDefault();deleteSel();return}
-  if(k==='escape'){closePops();sel=[];needs=true}
+  if(k==='escape'){closePops();if(menuOpen)setMenu(false);sel=[];needs=true}
 });
 board.addEventListener('wheel',e=>{
   e.preventDefault();
@@ -2258,6 +2302,7 @@ new MutationObserver(()=>{drawAllIcons();needs=true}).observe(document.documentE
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>renderCommitted());
 requestAnimationFrame(frame);
 updateSyncUI();startSync();
+if(S.compact&&!S.tipCompact){S.tipCompact=true;scheduleSave();setTimeout(()=>toast('工具收在左下角，點一下就能叫出來；選好工具直接畫，選單會自己收起',null,5000),600)}
 })();
 </script>
 
